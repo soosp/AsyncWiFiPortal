@@ -1,0 +1,16 @@
+{
+  "name": "AsyncWiFiPortal",
+  "version": "0.1.0",
+  "description": "Reboot-into-portal Wi-Fi recovery captive portal for ESP32 and ESP8266. The device restarts into a setup access point, brings up a captive portal, and gets its radio onto a network.",
+  "keywords": "wifi, captive-portal, provisioning, recovery, esp32, esp8266",
+  "repository": { "type": "git", "url": "https://github.com/soosp/AsyncWiFiPortal.git" },
+  "authors": [{ "name": "soosp", "maintainer": true }],
+  "license": "MIT",
+  "platforms": ["espressif32", "espressif8266"],
+  "frameworks": "arduino",
+  "dependencies": [
+    { "name": "ESP32Async/ESPAsyncWebServer", "version": "^3.11.2" },
+    { "name": "soosp/NetworkProfile", "version": "^0.5.0" },
+    { "name": "vshymanskyy/Preferences", "version": "^2.1.0", "platforms": ["espressif8266"] }
+  ]
+}
