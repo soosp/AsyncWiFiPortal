@@ -98,24 +98,31 @@
 #    define WIFI_PORTAL_CSS CONFIG_PORTAL_CSS
 #  else
 static const char WIFI_PORTAL_CSS_BUILTIN[] PROGMEM = R"CSS(
-:root{--bg:#f4f5f7;--card:#fff;--line:#d7dbe0;--txt:#1c1e21;--mut:#6b7280;--acc:#2563eb}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);
+:root{--bg:#eef3f7;--card-bg:#fff;--border:#d0d7de;--fg:#1a2b3c;--muted:#5b6b7b;
+--accent:#2c6faa;--alarm:#c62828}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
 font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-.wrap{max-width:520px;margin:0 auto;padding:20px}
+.content{max-width:34em;margin:0 auto;padding:20px}
 h1{font-size:20px;margin:8px 0 16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+.group{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;
 padding:16px;margin-bottom:14px}
 label{display:block;font-weight:600;margin:10px 0 4px}
-input,select{width:100%;padding:9px 10px;border:1px solid var(--line);
+input,select{width:100%;padding:9px 10px;border:1px solid var(--border);
 border-radius:7px;font-size:15px;background:#fff}
-.row{margin-bottom:6px}.chk{display:flex;align-items:center;gap:8px}
-.chk input{width:auto}.chk label{margin:0}
-.field-error{color:#b91c1c;font-size:13px;min-height:16px;display:block}
-.hint{color:var(--mut);font-size:13px;margin-top:2px}
-button{width:100%;padding:11px;border:0;border-radius:8px;background:var(--acc);
+.row{display:flex;justify-content:space-between;align-items:center;gap:1em;
+padding:.35em 0}
+.label{flex:0 0 45%;color:var(--muted);font-size:.92em}
+.label label{margin:0;font-weight:600}
+.value{flex:1 1 55%}
+.value input[type=checkbox]{width:auto}
+.field-error{display:none;color:var(--alarm);font-size:.8em;margin-top:.2em}
+.hint{color:var(--muted);font-size:.8em;margin-top:.2em}
+button{width:100%;padding:11px;border:0;border-radius:8px;background:var(--accent);
 color:#fff;font-size:16px;font-weight:600;margin-top:8px}
 button:disabled{opacity:.5}
-.hidden{display:none}
+[hidden]{display:none!important}
+@media (max-width:480px){.row{flex-direction:column;align-items:stretch;gap:.15em}
+.label{flex:none}}
 )CSS";
 #    define WIFI_PORTAL_CSS WIFI_PORTAL_CSS_BUILTIN
 #  endif
@@ -146,16 +153,18 @@ function checkStatic(ip,mask,gw,dns){
  if(dns){for(var i=0;i<dns.length;i++){if(unset(dns[i]))continue;var d=ip2n(dns[i]);
   if(d<0||!uni(d))return{key:'dns'+i,msg:'Not a usable DNS address'}}}
  return null}
-function adv(){$('advbox').className=$('advanced').checked?'':'hidden'}
-function stat(){$('statbox').className=$('dhcp').checked?'hidden':''}
-function clearErr(){var e=document.getElementsByClassName('field-error');for(var i=0;i<e.length;i++)e[i].textContent=''}
+function adv(){$('advbox').hidden=!$('advanced').checked}
+function stat(){$('statbox').hidden=$('dhcp').checked}
+function setErr(id,m){var e=$(id);if(!e)return;e.textContent=m||'';e.style.display=m?'block':'none'}
+function clearErr(){var e=document.getElementsByClassName('field-error');
+ for(var i=0;i<e.length;i++){e[i].textContent='';e[i].style.display='none'}}
 function dnsList(){var a=[],n=document.querySelectorAll('[name^=dns]');for(var i=0;i<n.length;i++)a.push(n[i].value);return a}
 function validate(){
  clearErr();var ok=true;
- if(!$('ssid').value){$('ssid_err').textContent='Required';ok=false}
+ if(!$('ssid').value){setErr('ssid_err','Required');ok=false}
  if($('advanced').checked&&!$('dhcp').checked){
   var r=checkStatic($('ip').value,$('mask').value,$('gw').value,dnsList());
-  if(r){var el=$(r.key+'_err');if(el)el.textContent=r.msg;ok=false}
+  if(r){setErr(r.key+'_err',r.msg);ok=false}
  }
  $('save').disabled=!ok;return ok}
 function init(){
@@ -267,6 +276,24 @@ public:
     // -------------------------------------------------------------------- run --
 
     /**
+     * @brief Replaces the stylesheet the portal serves.
+     * @param css A PROGMEM stylesheet, or nullptr to restore the default.
+     */
+    void setCss(const char* css) { _css = css ? css : WIFI_PORTAL_CSS; }
+
+    /**
+     * @brief Appends an application stylesheet after the one served.
+     *
+     * The recovery portal runs in its own boot, with no AsyncConfigPortal
+     * instance around, so it cannot inherit that server's supplement. Passing
+     * the same PROGMEM string to both is what keeps one house style across the
+     * two: `web.setCssExtra(MY_CSS); portal.setCssExtra(MY_CSS);`
+     *
+     * @param css A PROGMEM stylesheet, or nullptr for none.
+     */
+    void setCssExtra(const char* css) { _cssExtra = css; }
+
+    /**
      * @brief Enter portal mode. Does not return.
      *
      * Writes Running, brings up the AP / DNS / server, runs until a save or the
@@ -324,6 +351,29 @@ private:
         p.end();
     }
 
+    /// Streams one or two PROGMEM segments as a single body. Chunked with
+    /// memcpy_P rather than buffered: an ESP8266 cannot byte-read flash, and
+    /// building the asset in a response stream would copy it into RAM — which is
+    /// what exhausts the heap when several assets load at once.
+    static void _sendProgmem(AsyncWebServerRequest* req, const char* type,
+                             const char* body, const char* extra = nullptr) {
+        const size_t n1 = strlen_P(body);
+        const size_t total = n1 + (extra ? strlen_P(extra) : 0);
+        req->send(req->beginChunkedResponse(type,
+            [body, extra, n1, total](uint8_t* dst, size_t maxLen, size_t index) -> size_t {
+                const size_t rem = total - index;
+                size_t n = rem < maxLen ? rem : maxLen;
+                if (!n) return 0;
+                if (index < n1) {
+                    if (index + n > n1) n = n1 - index;
+                    memcpy_P(dst, body + index, n);
+                } else {
+                    memcpy_P(dst, extra + (index - n1), n);
+                }
+                return n;
+            }));
+    }
+
     /// The AP passphrase passed to softAP(): nullptr opens the network.
     const char* _apPassword() {
         switch (_apMode) {
@@ -362,18 +412,13 @@ private:
     /// page, which is what makes the captive window appear (DESIGN.md §5).
     void _startServer() {
         _server.on("/", HTTP_GET, [this](AsyncWebServerRequest* r) { _sendPortal(r); });
-        _server.on("/css", HTTP_GET, [](AsyncWebServerRequest* r) {
-            // Stream from PROGMEM via FPSTR: portable (ESP8266 needs the aligned
-            // flash read the Print/FlashStringHelper path gives) and not the
-            // deprecated send_P.
-            AsyncResponseStream* s = r->beginResponseStream("text/css");
-            s->print(FPSTR(WIFI_PORTAL_CSS));
-            r->send(s);
+        _server.on("/css", HTTP_GET, [this](AsyncWebServerRequest* r) {
+            // The application supplement, if any, follows the sheet: later rules
+            // win, so a house style needs no copy of the original.
+            _sendProgmem(r, "text/css", _css, _cssExtra);
         });
         _server.on("/portal.js", HTTP_GET, [](AsyncWebServerRequest* r) {
-            AsyncResponseStream* s = r->beginResponseStream("application/javascript");
-            s->print(FPSTR(WIFI_PORTAL_JS));
-            r->send(s);
+            _sendProgmem(r, "application/javascript", WIFI_PORTAL_JS);
         });
         _server.on("/save", HTTP_POST,
                    [this](AsyncWebServerRequest* r) { _handleSave(r); });
@@ -420,8 +465,8 @@ private:
             "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
             "<title>Wi-Fi setup</title><link rel=\"stylesheet\" href=\"/css\"></head>"
-            "<body><div class=\"wrap\"><h1>Wi-Fi setup</h1>"
-            "<form id=\"f\" method=\"post\" action=\"/save\"><div class=\"card\">"
+            "<body><div class=\"content\"><h1>Wi-Fi setup</h1>"
+            "<form id=\"f\" method=\"post\" action=\"/save\"><div class=\"group\">"
             "<label for=\"ssid\">Network (SSID)</label>"
             "<input id=\"ssid\" name=\"ssid\" autocapitalize=\"none\" autocomplete=\"off\">"
             "<span class=\"field-error\" id=\"ssid_err\"></span>"
@@ -438,12 +483,14 @@ private:
             "<div class=\"hint\">Left empty, the device names itself as shown "
             "(from its MAC). Used to find it after it joins: router list, mDNS.</div>"
             "</div>"
-            "<div class=\"row chk\"><input type=\"checkbox\" id=\"advanced\">"
-            "<label for=\"advanced\">Advanced</label></div>"
-            "<div class=\"card hidden\" id=\"advbox\">"
-            "<div class=\"row chk\"><input type=\"checkbox\" id=\"dhcp\" name=\"dhcp\" checked>"
-            "<label for=\"dhcp\">Use DHCP</label></div>"
-            "<div id=\"statbox\" class=\"hidden\">"
+            "<div class=\"row\"><span class=\"label\">"
+            "<label for=\"advanced\">Advanced</label></span>"
+            "<span class=\"value\"><input type=\"checkbox\" id=\"advanced\"></span></div>"
+            "<div class=\"group\" id=\"advbox\" hidden>"
+            "<div class=\"row\"><span class=\"label\">"
+            "<label for=\"dhcp\">Use DHCP</label></span>"
+            "<span class=\"value\"><input type=\"checkbox\" id=\"dhcp\" name=\"dhcp\" checked></span></div>"
+            "<div id=\"statbox\" hidden>"
             "<label for=\"ip\">IP address</label>"
             "<input id=\"ip\" name=\"ip\"><span class=\"field-error\" id=\"ip_err\"></span>"
             "<label for=\"mask\">Subnet mask</label>"
@@ -584,7 +631,7 @@ private:
         s->print(F("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
                    "<title>Wi-Fi setup</title><link rel=\"stylesheet\" href=\"/css\"></head>"
-                   "<body><div class=\"wrap\"><div class=\"card\">"));
+                   "<body><div class=\"content\"><div class=\"group\">"));
         s->print(F("<h1>"));
         s->print(ok ? F("Saved") : F("Not saved"));
         s->print(F("</h1><p>"));
@@ -688,7 +735,7 @@ private:
         s->print(F("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
                    "<title>Wi-Fi setup</title><link rel=\"stylesheet\" href=\"/css\"></head>"
-                   "<body><div class=\"wrap\"><div class=\"card\"><h1>Saved</h1>"
+                   "<body><div class=\"content\"><div class=\"group\"><h1>Saved</h1>"
                    "<p>Configuration saved without a confirmed connection. "
                    "The device is restarting.</p></div></div></body></html>"));
         r->send(s);
@@ -702,28 +749,28 @@ private:
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
             "<title>Wi-Fi setup</title><link rel=\"stylesheet\" href=\"/css\">"
             "<style>#m a{color:#2563eb;text-decoration:underline}#m a:visited{color:#2563eb}</style></head>"
-            "<body><div class=\"wrap\"><div class=\"card\">"
+            "<body><div class=\"content\"><div class=\"group\">"
             "<h1 id=\"h\">Connecting...</h1><p id=\"m\">Trying the network...</p>"
             "<p class=\"hint\" id=\"hint\">You may briefly disconnect from this setup network "
             "while the device connects.</p>"
-            "<p id=\"r\" class=\"hidden\"><a href=\"/\">Back to the form</a>"
+            "<p id=\"r\" hidden><a href=\"/\">Back to the form</a>"
             " &middot; <a href=\"#\" id=\"sa\">Save anyway</a></p></div></div>"
             "<script>var f=0;"
             "document.getElementById('sa').addEventListener('click',function(e){e.preventDefault();"
             "fetch('/saveanyway',{method:'POST'});"
             "var h=document.getElementById('h');h.textContent='Saved';h.style.color='#15803d';"
             "document.getElementById('m').textContent='Configuration saved without a confirmed connection. The device is restarting.';"
-            "document.getElementById('r').className='hidden'});"
+            "document.getElementById('r').hidden=true});"
             "function p(){fetch('/status').then(function(x){return x.json()}).then(function(j){"
             "f=0;document.getElementById('m').textContent=j.msg;"
             "if(j.state==='connected'){var hc=document.getElementById('h');"
             "hc.textContent='Connected';hc.style.color='#15803d';"
-            "document.getElementById('hint').className='hidden';"
+            "document.getElementById('hint').hidden=true;"
             "document.getElementById('m').innerHTML='IP address: <a href=\"http://'+j.ip+'\">'+j.ip+'</a><br>Configuration saved, the device is restarting soon.'}"
             "else if(j.state==='failed'){var hf=document.getElementById('h');"
             "hf.textContent='Not connected';hf.style.color='#b91c1c';"
-            "document.getElementById('hint').className='hidden';"
-            "document.getElementById('r').className=''}"
+            "document.getElementById('hint').hidden=true;"
+            "document.getElementById('r').hidden=false}"
             "else{setTimeout(p,1000)}}).catch(function(){"
             "if(++f===4){document.getElementById('m').textContent="
             "'If this setup network has disappeared, the device connected and joined your network. "
@@ -757,6 +804,8 @@ private:
     uint32_t       _restartAt  = 0;
     bool           _restartPending = false;
     const char*    _saveNs     = "net_wifi";
+    const char*    _css        = WIFI_PORTAL_CSS;   ///< served on /css
+    const char*    _cssExtra   = nullptr;           ///< appended after it
     char           _derivedBuf[17] = {};   // 16 Crockford chars + NUL
     ApSecurity     _apMode     = ApSecurity::Open;
     const char*    _apSecret   = nullptr;

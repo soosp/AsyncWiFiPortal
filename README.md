@@ -26,9 +26,22 @@ host web server.
 
 When the two are built together it reuses AsyncConfigPortal's stylesheet, so the
 portal matches the rest of the UI; on its own it falls back to a small built-in
-one. Either can be overridden: define `WIFI_PORTAL_CSS` (naming your own PROGMEM
-stylesheet, declared before the header) and the portal serves that instead. Only
-the stylesheet is shared — the portal always writes its own page and header.
+one that defines the same class names.
+
+A house style is set on the portal itself — `setCssExtra()` appends your snippet,
+`setCss()` replaces the sheet. It cannot inherit the config server's supplement:
+the recovery portal runs in its own boot, where that server does not exist. Pass
+the same PROGMEM string to both and the two match:
+
+```cpp
+web.setCssExtra(MY_CSS);       // the config portal, in the normal boot
+portal.setCssExtra(MY_CSS);    // the recovery portal, before run()
+```
+
+`WIFI_PORTAL_CSS` still replaces the sheet at compile time if you want it out of
+flash — this library is header-only, so a `#define` before the include is enough.
+See AsyncConfigPortal's `docs/CSS.md` for the class contract. Only the stylesheet
+is shared — the portal always writes its own page and header.
 
 ## Install
 
@@ -60,13 +73,13 @@ void setup() {
     portal.setProfileNamespace(ns);
 
     switch (portal.state()) {
-        case WiFiPortal::State::Requested:
-            portal.setApSecurity(WiFiPortal::ApSecurity::Open);
+        case AsyncWiFiPortal::State::Requested:
+            portal.setApSecurity(AsyncWiFiPortal::ApSecurity::Open);
             portal.run("Setup-AP");          // brings up the portal; does NOT return
             break;
-        case WiFiPortal::State::Running:     // interrupted (power loss/crash): do NOT
-        case WiFiPortal::State::Saved:       // auto-re-enter — a crash on entry would
-        case WiFiPortal::State::Abandoned:   // loop. Boot normally; retry via the button.
+        case AsyncWiFiPortal::State::Running:     // interrupted (power loss/crash): do NOT
+        case AsyncWiFiPortal::State::Saved:       // auto-re-enter — a crash on entry would
+        case AsyncWiFiPortal::State::Abandoned:   // loop. Boot normally; retry via the button.
             portal.clear();                  // acknowledge the last outcome
             break;
         default:
@@ -100,6 +113,8 @@ the button wired up.
 |`void rebootToPortal()`|Record a request and restart into the portal. **Not from an ISR.**|
 |`void setApSecurity(ApSecurity mode, const char* secret = nullptr)`|AP security; call before `run()`.|
 |`void setTimeout(uint32_t ms)`|Idle timeout before `Abandoned` (default 180 s).|
+|`void setCss(const char* css)`|Replace the stylesheet (PROGMEM); `nullptr` restores the default.|
+|`void setCssExtra(const char* css)`|Append an application stylesheet (PROGMEM) after it.|
 |`void setProfileNamespace(const char* ns)`|Namespace the config is saved to (default `"net_wifi"`).|
 |`void run(const char* apSsid)`|Enter portal mode. Owns the device and restarts when done — **does not return**.|
 

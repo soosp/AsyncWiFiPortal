@@ -59,7 +59,7 @@ portal has to report back what happened, and without a distinguishable
 portal"* turns an abandoned session into a reboot loop.
 
 ```cpp
-enum class State : uint8_t {   // nested in WiFiPortal (WiFiPortal::State)
+enum class State : uint8_t {   // nested in AsyncWiFiPortal (AsyncWiFiPortal::State)
     None      = 0,  ///< nothing pending, nothing to report
     Requested = 1,  ///< the app asked for it; the next boot enters the portal
     Running   = 2,  ///< the portal started (written on entry)
@@ -397,6 +397,21 @@ then built-in:
 #  endif
 #endif
 ```
+
+Sharing a stylesheet only works if both sides agree on the class names, so the
+portal's markup uses `AsyncConfigPortal`'s: `.content`, `.group`, `.row` with
+`.label`/`.value`, `.field-error`, `.hint`. Its own compact sheet defines exactly
+those, so the page looks right either way.
+
+Matching the rest of the UI is the application's call, not something inherited:
+the recovery portal runs in its own boot, with no config server around to take a
+supplement from. Hence its own `setCss()` / `setCssExtra()`, with the same shape
+as that server's — one PROGMEM string handed to both keeps the two consistent.
+
+Two parts of that contract are behavioural rather than cosmetic: `.field-error`
+is hidden until a script gives it a message, and structure is shown and hidden
+with the **`hidden` attribute** (plus the `[hidden]{display:none!important}` rule
+the sheets carry, which `.row`'s flex would otherwise beat).
 
 Defining `WIFI_PORTAL_CSS` before the header — naming a `PROGMEM` stylesheet of
 your own — overrides both. It is served straight from flash (`FPSTR`), so it

@@ -39,6 +39,11 @@ First release. The API may still change before 1.0.0.
   produce byte-identical passwords on both platforms.
 - Low-power setup AP (`WIFI_PORTAL_AP_TX_DBM`, default 8 dBm) so a weak-antenna
   board stays reachable while it is being configured.
+- Shares `AsyncConfigPortal`'s stylesheet and class contract when both are built,
+  so the recovery portal looks like the rest of the UI; standalone it falls back
+  to a compact sheet defining the same names. `setCss()` / `setCssExtra()` apply
+  an application style, which is separate from the config server's because the
+  portal runs in its own boot.
 - Configuration through `setApSecurity()`, `setTimeout()`,
   `setProfileNamespace()` and the `WIFI_PORTAL_*` compile-time macros. The
   stylesheet is reused from `AsyncConfigPortal` when it is present, falls back to
