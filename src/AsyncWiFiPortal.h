@@ -618,7 +618,6 @@ private:
             case CC::BadMask:          return "the subnet mask is not valid";
             case CC::GatewayOffSubnet: return "the gateway is not on the configured subnet";
             case CC::BadDns:           return "a DNS server address is not valid";
-            case CC::BadNtp:           return "an NTP server address is not valid";
             case CC::BadSsid:          return "the network name (SSID) is not valid";
             case CC::BadPassword:      return "the password is not valid (8-63 characters)";
             case CC::BadTxPower:       return "the TX power is not an allowed level";

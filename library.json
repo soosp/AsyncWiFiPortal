@@ -10,7 +10,7 @@
   "frameworks": "arduino",
   "dependencies": [
     { "name": "ESP32Async/ESPAsyncWebServer", "version": "^3.11.2" },
-    { "name": "soosp/NetworkProfile", "version": "^0.5.0" },
+    { "name": "soosp/NetworkProfile", "version": "^0.7.0" },
     { "name": "vshymanskyy/Preferences", "version": "^2.1.0", "platforms": ["espressif8266"] }
   ]
 }
