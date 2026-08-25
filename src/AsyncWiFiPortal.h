@@ -744,6 +744,7 @@ private:
         _write(State::Saved);
         _restartPending = true;
         _restartAt = millis() + delayMs;
+        return true;
     }
 
     /// Escape hatch (DESIGN.md §7): commit the staged config even though the test

@@ -31,7 +31,9 @@ First release. The API may still change before 1.0.0.
   overwrites a working configuration. Includes a failure taxonomy (not found /
   rejected / DHCP / timeout), a live green/red result showing the device's IP on
   success (following the ESP32 Channel Switch Announcement), and a "save anyway"
-  escape hatch for false negatives.
+  escape hatch for false negatives. A write that does not go through keeps the
+  portal up and reports it, rather than restarting onto a configuration that was
+  never stored.
 - Three access-point security modes chosen by the deployment: `Open`,
   `Passphrase` (one fleet-wide value), and `MacDerived` (a per-device password
   from the factory base MAC and a salt). `tools/genpass.py` prints matching
