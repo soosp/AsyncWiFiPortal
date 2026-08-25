@@ -610,22 +610,34 @@ private:
         }
     }
 
-    static const char* _checkMsg(NetworkProfile::ConfigCheck c) {
+    // Flash-resident: the strings are only ever handed to Print::print(), which
+    // reads a __FlashStringHelper* correctly on both platforms, so they cost no
+    // RAM on ESP8266.
+    //
+    // Every enumerator is listed and the fallback is the initialiser rather than
+    // a default: label. The two behave identically — an unrecognised value still
+    // produces the generic line — but default: also silences -Wswitch, so a
+    // value added to NetworkProfile::ConfigCheck later would reach the page as
+    // "not valid" with nothing to say a new reason had appeared.
+    static const __FlashStringHelper* _checkMsg(NetworkProfile::ConfigCheck c) {
         using CC = NetworkProfile::ConfigCheck;
+        const __FlashStringHelper* m = F("the configuration is not valid");
         switch (c) {
-            case CC::BadHostname:      return "the hostname is not valid";
-            case CC::BadIp:            return "the IP address is not a usable host address on its subnet";
-            case CC::BadMask:          return "the subnet mask is not valid";
-            case CC::GatewayOffSubnet: return "the gateway is not on the configured subnet";
-            case CC::BadDns:           return "a DNS server address is not valid";
-            case CC::BadSsid:          return "the network name (SSID) is not valid";
-            case CC::BadPassword:      return "the password is not valid (8-63 characters)";
-            case CC::BadTxPower:       return "the TX power is not an allowed level";
-            default:                   return "the configuration is not valid";
+            case CC::Ok:               m = F("the configuration is valid"); break;
+            case CC::BadHostname:      m = F("the hostname is not valid"); break;
+            case CC::BadIp:            m = F("the IP address is not a usable host address on its subnet"); break;
+            case CC::BadMask:          m = F("the subnet mask is not valid"); break;
+            case CC::GatewayOffSubnet: m = F("the gateway is not on the configured subnet"); break;
+            case CC::BadDns:           m = F("a DNS server address is not valid"); break;
+            case CC::BadSsid:          m = F("the network name (SSID) is not valid"); break;
+            case CC::BadPassword:      m = F("the password is not valid (8-63 characters)"); break;
+            case CC::BadTxPower:       m = F("the TX power is not an allowed level"); break;
         }
+        return m;
     }
 
-    void _sendResult(AsyncWebServerRequest* r, bool ok, const char* msg) {
+    void _sendResult(AsyncWebServerRequest* r, bool ok,
+                     const __FlashStringHelper* msg) {
         AsyncResponseStream* s = r->beginResponseStream("text/html");
         s->print(F("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
@@ -711,14 +723,24 @@ private:
         _test = Test::Connected;
         _testMsg = PSTR("Connected");
         _staIp = WiFi.localIP();
-        _persist(WIFI_PORTAL_RESULT_MS);
+        if (!_persist(WIFI_PORTAL_RESULT_MS))
+            _fail(PSTR("Connected, but the configuration could not be saved"));
     }
 
     /// Write the staged config to flash and schedule the restart. Shared by a
     /// successful test and the "save anyway" escape hatch.
-    void _persist(uint32_t delayMs) {
-        _profile.setConfig(_staged);
-        _profile.saveCfg(_saveNs);
+    /// Commits the staged configuration and schedules the restart.
+    ///
+    /// Both calls are checked. _staged has already passed checkConfig(), so
+    /// setConfig() can only fail on a mutex timeout and saveCfg() on storage —
+    /// but an unchecked failure here is the worst kind this portal has: it would
+    /// mark State::Saved and reboot into an empty or stale profile, with the AP
+    /// gone and no way back except the button. Better to stay in the portal and
+    /// say so.
+    ///
+    /// @return false if nothing was committed; the caller reports it.
+    bool _persist(uint32_t delayMs) {
+        if (!_profile.setConfig(_staged) || !_profile.saveCfg(_saveNs)) return false;
         _write(State::Saved);
         _restartPending = true;
         _restartAt = millis() + delayMs;
@@ -729,7 +751,11 @@ private:
     /// a long DHCP, or the ESP8266 AP+STA limitation.
     void _handleSaveAnyway(AsyncWebServerRequest* r) {
         if (!_haveStaged) { r->send(409, "text/plain", "Nothing to save"); return; }
-        _persist(1500);
+        if (!_persist(1500)) {
+            _sendResult(r, false, F("the configuration could not be saved; "
+                                    "nothing was changed"));
+            return;
+        }
         AsyncResponseStream* s = r->beginResponseStream("text/html");
         s->print(F("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
