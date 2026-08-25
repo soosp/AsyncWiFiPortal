@@ -1,4 +1,4 @@
-# WiFiPortal
+# AsyncWiFiPortal
 
 Recovery-mode Wi-Fi setup for ESP32 and ESP8266. When a device has no other way
 in, trigger the portal — with a button, or from a still-working web UI: it
@@ -19,7 +19,7 @@ For *why* it is built this way, and the pitfalls, see [`docs/DESIGN.md`](docs/DE
 
 ## Origin and styling
 
-WiFiPortal grew out of [`AsyncConfigPortal`](https://github.com/soosp/AsyncConfigPortal)
+AsyncWiFiPortal grew out of [`AsyncConfigPortal`](https://github.com/soosp/AsyncConfigPortal)
 — the recovery path for Wi-Fi-only devices that could otherwise become
 unreachable — but it stands on its own and needs neither AsyncConfigPortal nor a
 host web server.
@@ -52,8 +52,8 @@ Dependencies (PlatformIO pulls them automatically):
 - `DNSServer` — bundled with the core
 - `vshymanskyy/Preferences` — ESP8266 only
 
-PlatformIO: add `soosp/WiFiPortal` to `lib_deps`. Arduino IDE: install WiFiPortal
-and its dependencies from the Library Manager.
+PlatformIO: add `soosp/AsyncWiFiPortal` to `lib_deps`, which pulls the rest.
+Arduino IDE: install AsyncWiFiPortal from the Library Manager.
 
 ## Quick start
 
