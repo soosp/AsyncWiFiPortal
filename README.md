@@ -45,12 +45,25 @@ is shared — the portal always writes its own page and header.
 
 ## Install
 
-Dependencies (PlatformIO pulls them automatically):
+The two manifests name the same libraries differently: PlatformIO takes an
+`owner/name`, the Arduino Library Manager takes the library's own `name=` field.
 
-- `NetworkProfile` — provides `WiFiProfile`
-- `ESPAsyncWebServer`
-- `DNSServer` — bundled with the core
-- `vshymanskyy/Preferences` — ESP8266 only
+|PlatformIO|Arduino Library Manager|Notes|
+|---|---|---|
+|`soosp/NetworkProfile`|`NetworkProfile`|provides `WiFiProfile`|
+|`ESP32Async/AsyncTCP`|`Async TCP`|ESP32 only|
+|`ESP32Async/ESPAsyncTCP`|`ESP Async TCP`|ESP8266 only|
+|`ESP32Async/ESPAsyncWebServer`|`ESP Async WebServer`|both platforms|
+|`vshymanskyy/Preferences`|`Preferences`|ESP8266 only; the core provides it on ESP32|
+
+`DNSServer` is bundled with both cores and needs no entry.
+
+Pin the ESP32Async forks. Several incompatible async-TCP libraries sit in the
+Library Manager under names a glance cannot tell apart — `Async TCP`,
+`ESP Async TCP`, `ESP AsyncTCP` — and the web server declares no `depends=` of
+its own, so nothing installs the right one for you. Both are named here for that
+reason; the one your board does not use is installed but never compiled, since
+nothing includes its header.
 
 PlatformIO: add `soosp/AsyncWiFiPortal` to `lib_deps`, which pulls the rest.
 Arduino IDE: install AsyncWiFiPortal from the Library Manager.

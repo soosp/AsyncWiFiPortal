@@ -9,6 +9,8 @@
   "platforms": ["espressif32", "espressif8266"],
   "frameworks": "arduino",
   "dependencies": [
+    { "name": "ESP32Async/AsyncTCP", "version": "^3.4.10", "platforms": ["espressif32"] },
+    { "name": "ESP32Async/ESPAsyncTCP", "version": "^2.0.0", "platforms": ["espressif8266"] },
     { "name": "ESP32Async/ESPAsyncWebServer", "version": "^3.11.2" },
     { "name": "soosp/NetworkProfile", "version": "^0.7.0" },
     { "name": "vshymanskyy/Preferences", "version": "^2.1.0", "platforms": ["espressif8266"] }
