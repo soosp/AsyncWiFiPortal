@@ -9,7 +9,7 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-08-04
+## [0.1.0] - 2026-08-26
 
 First release. The API may still change before 1.0.0.
 
