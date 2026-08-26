@@ -34,6 +34,13 @@ First release. The API may still change before 1.0.0.
   escape hatch for false negatives. A write that does not go through keeps the
   portal up and reports it, rather than restarting onto a configuration that was
   never stored.
+
+  On ESP32 the test scans every channel before choosing an access point, rather
+  than taking the first beacon with the right SSID as the core does by default.
+  On a network with several access points that choice is otherwise arbitrary,
+  and where a controller enforces a signal floor a distant one refuses the
+  association — which arrives as `WL_CONNECT_FAILED` and would be reported as
+  "check the password", sending the user to fix the one thing that is right.
 - Three access-point security modes chosen by the deployment: `Open`,
   `Passphrase` (one fleet-wide value), and `MacDerived` (a per-device password
   from the factory base MAC and a salt). `tools/genpass.py` prints matching

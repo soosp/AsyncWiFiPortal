@@ -56,7 +56,13 @@
 #  define WIFI_PORTAL_IDLE_MS 180000UL
 #endif
 
-/** @brief How long (ms) to wait for the STA to join during the connection test. */
+/**
+ * @brief How long (ms) to wait for the STA to join during the connection test.
+ *
+ * On ESP32 the window covers a full-channel scan as well as the association and
+ * the lease — see _startTest() for why that scan is worth its 1.5-2 s. The
+ * default leaves ample room; shortening it should account for the scan.
+ */
 #ifndef WIFI_PORTAL_TEST_MS
 #  define WIFI_PORTAL_TEST_MS 15000UL
 #endif
@@ -683,6 +689,25 @@ private:
         _testMsg = PSTR("Trying the network...");
         _testStart = millis();
         WiFi.mode(WIFI_AP_STA);
+
+#if defined(ARDUINO_ARCH_ESP32)
+        // Scan every channel before choosing, rather than taking the first
+        // beacon carrying the right SSID — which is what the core's default,
+        // WIFI_FAST_SCAN, does. The companion sort_method already prefers the
+        // strongest signal, but with one candidate there is nothing to sort.
+        //
+        // It matters more here than anywhere else in this library. Where a
+        // controller enforces a signal floor, a distant access point refuses the
+        // association, and that arrives as WL_CONNECT_FAILED — which the verdict
+        // below reports as "check the password". The credentials would be
+        // correct, and the user would be sent to fix the one thing that is not
+        // wrong. The scan costs 1.5-2 s of the WIFI_PORTAL_TEST_MS budget, which
+        // is cheap next to a wrong answer given to somebody standing at the
+        // device.
+        //
+        // ESP8266 has no equivalent setting; its SDK chooses on its own.
+        WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+#endif
         if (_staged.dhcp) {
             WiFi.config(IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0), IPAddress(0, 0, 0, 0));
         } else {
