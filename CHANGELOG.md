@@ -9,6 +9,20 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `setNote()` puts a line of text under the heading on the setup form, for
+  whatever identifies this device to the person in front of it.
+
+  A MAC address is the usual answer. The portal is the only place it can be read
+  before the device has joined a network, which is exactly when someone wants it
+  — to reserve a DHCP lease. Afterwards the router already knows it and the
+  question does not arise. An access point name carrying the last few hex digits
+  tells two devices apart but is not something that can be typed into a DHCP
+  table.
+
+  Escaped on output.
+
 ## [0.1.0] - 2026-08-26
 
 First release. The API may still change before 1.0.0.

@@ -300,6 +300,25 @@ public:
     void setCssExtra(const char* css) { _cssExtra = css; }
 
     /**
+     * @brief A line of text shown under the heading on the setup form.
+     *
+     * For whatever identifies this particular device to the person standing in
+     * front of it. A MAC address is the usual answer: the portal is the only
+     * place it can be read before the device has joined a network, which is
+     * exactly when someone wants it to reserve a DHCP lease — afterwards the
+     * router already knows it and the question does not arise.
+     *
+     * The access point's name carries the last few hex digits on most projects,
+     * which is enough to tell two devices apart but not enough to type into a
+     * DHCP table.
+     *
+     * Escaped on output, so any text is safe. Pass nullptr to remove it.
+     *
+     * @param note Text to display, or nullptr.
+     */
+    void setNote(const char* note) { _note = note; }
+
+    /**
      * @brief Enter portal mode. Does not return.
      *
      * Writes Running, brings up the AP / DNS / server, runs until a save or the
@@ -471,7 +490,13 @@ private:
             "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
             "<title>Wi-Fi setup</title><link rel=\"stylesheet\" href=\"/css\"></head>"
-            "<body><div class=\"content\"><h1>Wi-Fi setup</h1>"
+            "<body><div class=\"content\"><h1>Wi-Fi setup</h1>"));
+        if (_note) {
+            s->print(F("<p class=\"hint\">"));
+            _printEscaped(s, _note);
+            s->print(F("</p>"));
+        }
+        s->print(F(
             "<form id=\"f\" method=\"post\" action=\"/save\"><div class=\"group\">"
             "<label for=\"ssid\">Network (SSID)</label>"
             "<input id=\"ssid\" name=\"ssid\" autocapitalize=\"none\" autocomplete=\"off\">"
@@ -857,6 +882,28 @@ private:
     const char*    _saveNs     = "net_wifi";
     const char*    _css        = WIFI_PORTAL_CSS;   ///< served on /css
     const char*    _cssExtra   = nullptr;           ///< appended after it
+    const char*    _note       = nullptr;           ///< shown under the heading
+
+    /**
+     * @brief Writes text with the five HTML-significant characters escaped.
+     *
+     * The note comes from the application, so in practice it is a MAC address
+     * or a serial number — but a page that only works for well-behaved input is
+     * one bug away from an injection, and the cost here is a switch over five
+     * characters.
+     */
+    static void _printEscaped(Print* s, const char* t) {
+        for (; *t; t++) {
+            switch (*t) {
+                case '&':  s->print(F("&amp;"));  break;
+                case '<':  s->print(F("&lt;"));   break;
+                case '>':  s->print(F("&gt;"));   break;
+                case '"':  s->print(F("&quot;")); break;
+                case '\'': s->print(F("&#39;"));  break;
+                default:   s->print(*t);          break;
+            }
+        }
+    }
     char           _derivedBuf[17] = {};   // 16 Crockford chars + NUL
     ApSecurity     _apMode     = ApSecurity::Open;
     const char*    _apSecret   = nullptr;
