@@ -9,6 +9,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-07
+
 ### Added
 
 - `setNote()` puts a line of text under the heading on the setup form, for
@@ -81,5 +83,6 @@ First release. The API may still change before 1.0.0.
   isolated segment) is designed but not yet implemented; a static connection
   currently reports success on association plus a set address.
 
-[Unreleased]: https://github.com/soosp/AsyncWiFiPortal/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/soosp/AsyncWiFiPortal/releases/tag/v0.1.0
+[Unreleased]: https://github.com/soosp/AsyncWiFiPortal/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/soosp/AsyncWiFiPortal/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/soosp/AsyncWiFiPortal/releases/tag/0.1.0
