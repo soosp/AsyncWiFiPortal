@@ -9,6 +9,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Bump NetworkProfile dependency to 0.11.2
+
 ## [0.2.1] - 2026-10-28
 
 ### Fixed
