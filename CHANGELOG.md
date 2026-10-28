@@ -9,6 +9,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-28
+
 ### Fixed
 
 - The MAC-derived AP password is read from `ESP_MAC_BASE` on ESP32, not from
@@ -91,6 +93,7 @@ First release. The API may still change before 1.0.0.
   isolated segment) is designed but not yet implemented; a static connection
   currently reports success on association plus a set address.
 
-[Unreleased]: https://github.com/soosp/AsyncWiFiPortal/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/soosp/AsyncWiFiPortal/compare/0.2.1...HEAD
+[0.2.1]: https://github.com/soosp/AsyncWiFiPortal/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/soosp/AsyncWiFiPortal/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/soosp/AsyncWiFiPortal/releases/tag/0.1.0
