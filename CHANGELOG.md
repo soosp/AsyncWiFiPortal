@@ -9,6 +9,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- The MAC-derived AP password is read from `ESP_MAC_BASE` on ESP32, not from
+  `ESP_MAC_WIFI_STA`. The two are the same address on every ESP32 with a radio
+  of its own, so no existing password changes. On an ESP32-P4, whose WiFi runs
+  on an ESP-Hosted co-processor, the station address is not in the chip's MAC
+  table: the read failed and every P4 derived the same password from zeros
+
 ## [0.2.0] - 2026-10-07
 
 ### Added

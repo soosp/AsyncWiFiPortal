@@ -412,10 +412,11 @@ private:
     /// MacDerived password: crockford32(HMAC-SHA256(salt, base-MAC)[:10]), 16
     /// chars, byte-identical to tools/genpass.py. The salt is _apSecret (empty if
     /// none — then obscurity-only, the algorithm being public). Derived from the
-    /// factory *base* MAC (== the STA MAC on both platforms), which is what is
-    /// printed on the chip and is independent of build config — unlike the soft-AP
-    /// BSSID (base or base+1 on ESP32 per CONFIG_ESP32_UNIVERSAL_MAC_ADDRESSES,
-    /// a local-bit variant on ESP8266). Also readable before the AP is up.
+    /// factory *base* MAC (== the STA MAC wherever the chip has its own radio),
+    /// which is what is printed on the chip and is independent of build config —
+    /// unlike the soft-AP BSSID (base or base+1 on ESP32 per
+    /// CONFIG_ESP32_UNIVERSAL_MAC_ADDRESSES, a local-bit variant on ESP8266).
+    /// Also readable before the AP is up.
     const char* _derived() {
         uint8_t mac[6] = {0};
         _readBaseMac(mac);
@@ -424,9 +425,14 @@ private:
         return _derivedBuf;
     }
 
+    /// ESP_MAC_BASE, not ESP_MAC_WIFI_STA. The two are the same address on
+    /// every ESP32 with a radio of its own, so no derived password changes. On
+    /// an ESP32-P4 the radio is an ESP-Hosted co-processor and the station
+    /// address is not in the chip's MAC table at all: the read failed, the
+    /// buffer stayed zero, and every P4 derived the same password.
     static void _readBaseMac(uint8_t mac[6]) {
 #if defined(ARDUINO_ARCH_ESP32)
-        esp_read_mac(mac, ESP_MAC_WIFI_STA);   // eFuse base MAC, mode-independent
+        esp_read_mac(mac, ESP_MAC_BASE);       // eFuse base MAC, mode-independent
 #else
         WiFi.macAddress(mac);                  // ESP8266: STA MAC == base MAC
 #endif
